@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Planowanie pobrań, timer laktatora i dziennik mililitrów.">
+    <meta name="theme-color" content="#f5fbfa">
+    <meta name="application-name" content="Lacti">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Lacti">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Lacti</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="assets/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="stylesheet" href="styles.css?v=15">
+  </head>
+  <body>
+    <svg aria-hidden="true" class="icon-sprite">
+      <symbol id="icon-calendar" viewBox="0 0 24 24">
+        <path d="M8 2v4M16 2v4M3.5 9.5h17M5 4.5h14a2 2 0 0 1 2 2v12.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z"/>
+      </symbol>
+      <symbol id="icon-timer" viewBox="0 0 24 24">
+        <path d="M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/>
+      </symbol>
+      <symbol id="icon-chart" viewBox="0 0 24 24">
+        <path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-8M20 16v-3"/>
+      </symbol>
+      <symbol id="icon-bell" viewBox="0 0 24 24">
+        <path d="M18 9a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"/>
+      </symbol>
+      <symbol id="icon-minus" viewBox="0 0 24 24">
+        <path d="M5 12h14"/>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="m8 5 11 7-11 7V5Z"/>
+      </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <path d="M8 5v14M16 5v14"/>
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <path d="M7 7h10v10H7z"/>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6"/>
+      </symbol>
+      <symbol id="icon-rotate" viewBox="0 0 24 24">
+        <path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/>
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
+        <path d="M7 21v-8h10v8M7 3v5h8"/>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 7V4h6v3M8 11v7M12 11v7M16 11v7M6 7l1 14h10l1-14"/>
+      </symbol>
+      <symbol id="icon-balance" viewBox="0 0 24 24">
+        <path d="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4"/>
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <header class="app-header">
+        <img class="brand-mark" src="assets/icon-192.png" alt="">
+        <div class="brand-copy">
+          <p id="todayLabel" class="meta-label">Dzisiaj</p>
+          <h1>Lacti</h1>
+        </div>
+        <button class="icon-button" id="notificationButton" type="button" aria-label="Powiadomienia" title="Powiadomienia">
+          <svg><use href="#icon-bell"></use></svg>
+        </button>
+      </header>
+
+      <main class="main-content">
+        <section id="view-plan" class="view is-active" aria-labelledby="planTitle">
+          <div class="section-heading">
+            <div>
+              <p class="meta-label">Następne pobranie</p>
+              <h2 id="planTitle">Plan doby</h2>
+            </div>
+            <div class="next-pill" id="nextPickupPill">--:--</div>
+          </div>
+
+          <div class="summary-strip">
+            <div>
+              <span class="summary-value" id="nextPickupTime">--:--</span>
+              <span class="summary-label">godzina</span>
+            </div>
+            <div>
+              <span class="summary-value" id="nextPickupCountdown">--</span>
+              <span class="summary-label">pozostało</span>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <button class="soft-button" id="addPickupButton" type="button">
+              <svg><use href="#icon-plus"></use></svg>
+              Dodaj
+            </button>
+            <button class="soft-button" id="evenPlanButton" type="button">
+              <svg><use href="#icon-balance"></use></svg>
+              Równo
+            </button>
+          </div>
+
+          <div id="scheduleList" class="schedule-list" aria-live="polite"></div>
+        </section>
+
+        <section id="view-session" class="view" aria-labelledby="sessionTitle">
+          <div class="section-heading">
+            <div>
+              <p class="meta-label">Sesja</p>
+              <h2 id="sessionTitle">Laktator</h2>
+            </div>
+            <div class="next-pill" id="sessionStatePill">gotowe</div>
+          </div>
+
+          <div class="timer-panel">
+            <div class="timer-ring" aria-live="polite">
+              <span id="timerName">Wybierz minutnik</span>
+              <strong id="timerCountdown">00:00</strong>
+              <small id="timerHint">ostatnio: brak</small>
+            </div>
+            <div class="timer-progress" aria-hidden="true">
+              <span id="timerProgressBar"></span>
+            </div>
+          </div>
+
+          <div class="session-actions">
+            <button class="primary-button" id="startPauseButton" type="button">
+              <svg><use href="#icon-play"></use></svg>
+              Start
+            </button>
+            <button class="soft-button" id="stopSessionButton" type="button">
+              <svg><use href="#icon-stop"></use></svg>
+              Stop
+            </button>
+          </div>
+
+          <div class="control-group timer-library" aria-labelledby="timerLibraryTitle">
+            <div class="library-heading">
+              <div>
+                <div class="mini-heading" id="timerLibraryTitle">Minutniki</div>
+                <p id="completedTimersSummary" class="session-note">0 wykonanych</p>
+              </div>
+              <button class="soft-button reset-timers-button" id="resetTimersButton" type="button">
+                <svg><use href="#icon-rotate"></use></svg>
+                Reset
+              </button>
+            </div>
+            <div id="timerList" class="timer-list"></div>
+          </div>
+
+          <form class="compact-form" id="timerForm">
+            <div class="mini-heading">Nowy minutnik</div>
+            <label>
+              <span>Minuty</span>
+              <input id="timerMinutesInput" type="number" min="1" max="180" step="1" inputmode="numeric" placeholder="15" required>
+            </label>
+            <button class="primary-button" type="submit">
+              <svg><use href="#icon-plus"></use></svg>
+              Dodaj
+            </button>
+          </form>
+        </section>
+
+        <section id="view-stats" class="view" aria-labelledby="statsTitle">
+          <div class="section-heading">
+            <div>
+              <p class="meta-label">Mililitry</p>
+              <h2 id="statsTitle">Statystyki</h2>
+            </div>
+            <div class="next-pill" id="todayTotalPill">0 ml</div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span>Dzisiaj</span>
+              <strong id="metricToday">0 ml</strong>
+            </div>
+            <div class="metric-card">
+              <span id="metricPeriodLabel">7 dni</span>
+              <strong id="metricWeek">0 ml</strong>
+            </div>
+            <div class="metric-card">
+              <span id="metricAverageLabel">Śr. / dzień</span>
+              <strong id="metricAverage">0 ml</strong>
+            </div>
+          </div>
+
+          <div class="range-switch" role="group" aria-label="Zakres statystyk">
+            <button class="range-button is-active" type="button" data-stats-range="week">7 dni</button>
+            <button class="range-button" type="button" data-stats-range="quarter">3 miesiące</button>
+          </div>
+
+          <div class="stats-panel">
+            <div class="mini-heading">Podsumowanie historii</div>
+            <div class="stats-detail-grid">
+              <div class="stat-tile">
+                <span>Łącznie</span>
+                <strong id="metricTotalAll">0 ml</strong>
+                <small id="metricTotalEntries">0 wpisów</small>
+              </div>
+              <div class="stat-tile">
+                <span>Wpisy</span>
+                <strong id="metricEntryCount">0</strong>
+                <small>w historii</small>
+              </div>
+              <div class="stat-tile">
+                <span>Średnia / wpis</span>
+                <strong id="metricEntryAverage">0 ml</strong>
+                <small>na pobranie</small>
+              </div>
+              <div class="stat-tile">
+                <span>Największy wpis</span>
+                <strong id="metricMaxEntry">0 ml</strong>
+                <small id="metricMaxEntryDate">brak</small>
+              </div>
+              <div class="stat-tile">
+                <span>Najlepszy dzień</span>
+                <strong id="metricBestDay">0 ml</strong>
+                <small id="metricBestDayDate">brak</small>
+              </div>
+              <div class="stat-tile">
+                <span>Ostatni wpis</span>
+                <strong id="metricLastEntry">0 ml</strong>
+                <small id="metricLastEntryDate">brak</small>
+              </div>
+              <div class="stat-tile stat-tile-wide">
+                <span id="metricTrendLabel">Trend 7 dni</span>
+                <strong id="metricTrend">0 ml</strong>
+                <small id="metricTrendDetail">poprzednio 0 ml</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-panel">
+            <div class="chart-heading">
+              <div>
+                <div class="mini-heading" id="chartTitle">Ostatnie 7 dni</div>
+                <p id="chartSubtitle" class="chart-subtitle">7 dni · 0 ml · 0 wpisów</p>
+              </div>
+              <div class="chart-peak-pill" id="chartPeakPill">max 0 ml</div>
+            </div>
+            <div id="chartScroller" class="chart-scroll" tabindex="0" aria-label="Przewijany wykres pobrań">
+              <div id="weekChart" class="week-chart" aria-label="Wykres pobrań"></div>
+            </div>
+          </div>
+
+          <form class="compact-form" id="logForm">
+            <div class="mini-heading">Nowy zapis</div>
+            <label>
+              <span>Data</span>
+              <input id="logDate" type="date" required>
+            </label>
+            <label>
+              <span>Godzina</span>
+              <input id="logTime" type="time" required>
+            </label>
+            <label>
+              <span>Razem ml</span>
+              <input id="logMl" type="number" min="0" step="5" inputmode="numeric" placeholder="0" required>
+            </label>
+            <button class="primary-button" type="submit">
+              <svg><use href="#icon-save"></use></svg>
+              Zapisz
+            </button>
+          </form>
+
+          <div class="history-block">
+            <div class="mini-heading">Historia</div>
+            <div id="historyList" class="history-list"></div>
+          </div>
+        </section>
+      </main>
+
+      <nav class="tabbar" aria-label="Główne moduły">
+        <button class="tab-button is-active" type="button" data-view="plan">
+          <svg><use href="#icon-calendar"></use></svg>
+          <span>Plan</span>
+        </button>
+        <button class="tab-button" type="button" data-view="session">
+          <svg><use href="#icon-timer"></use></svg>
+          <span>Laktator</span>
+        </button>
+        <button class="tab-button" type="button" data-view="stats">
+          <svg><use href="#icon-chart"></use></svg>
+          <span>Wyniki</span>
+        </button>
+      </nav>
+    </div>
+
+    <script src="app.js?v=15" type="module"></script>
+  </body>
+</html>
