@@ -39,6 +39,7 @@ let pickupReminderTimer = null;
 let audioContext = null;
 let wakeLock = null;
 let activeTimelineDrag = null;
+let logModalReturnFocus = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
@@ -99,6 +100,9 @@ function cacheDom() {
     chartPeakPill: document.querySelector("#chartPeakPill"),
     chartScroller: document.querySelector("#chartScroller"),
     weekChart: document.querySelector("#weekChart"),
+    logModal: document.querySelector("#logModal"),
+    openLogModalButtons: document.querySelectorAll("[data-open-log-modal]"),
+    closeLogModalButtons: document.querySelectorAll("[data-close-log-modal]"),
     logForm: document.querySelector("#logForm"),
     logDate: document.querySelector("#logDate"),
     logTime: document.querySelector("#logTime"),
@@ -115,6 +119,15 @@ function bindEvents() {
   dom.notificationButton.addEventListener("click", requestNotifications);
   dom.addPickupButton.addEventListener("click", addPickup);
   dom.evenPlanButton.addEventListener("click", distributeScheduleEvenly);
+  dom.openLogModalButtons.forEach((button) => {
+    button.addEventListener("click", openLogModal);
+  });
+  dom.closeLogModalButtons.forEach((button) => {
+    button.addEventListener("click", closeLogModal);
+  });
+  dom.logModal.addEventListener("click", (event) => {
+    if (event.target === dom.logModal) closeLogModal();
+  });
 
   dom.scheduleList.addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-pickup]");
@@ -171,6 +184,7 @@ function bindEvents() {
     dom.logMl.value = "";
     setDefaultLogDateTime();
     renderStats();
+    closeLogModal();
   });
 
   dom.historyList.addEventListener("click", (event) => {
@@ -187,10 +201,35 @@ function bindEvents() {
       scheduleNextPickupReminder();
     }
   });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !dom.logModal.classList.contains("is-hidden")) {
+      closeLogModal();
+    }
+  });
 }
 
 function initializeInputs() {
   setDefaultLogDateTime();
+}
+
+function openLogModal() {
+  logModalReturnFocus = document.activeElement;
+  setDefaultLogDateTime();
+  dom.logMl.value = "";
+  dom.logModal.classList.remove("is-hidden");
+  dom.logModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-modal-open");
+  window.setTimeout(() => dom.logMl.focus(), 0);
+}
+
+function closeLogModal() {
+  if (dom.logModal.classList.contains("is-hidden")) return;
+  dom.logModal.classList.add("is-hidden");
+  dom.logModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-modal-open");
+  logModalReturnFocus?.focus?.();
+  logModalReturnFocus = null;
 }
 
 function initializeView() {
@@ -601,7 +640,7 @@ function finishTimer() {
   state.activeTimer.completedAt = Date.now();
   saveState();
   releaseWakeLock();
-  playAlert();
+  playAlert("finish");
   showAppNotification("Minutnik zakończony", `${formatActiveTimerLabel(state.activeTimer)} dobiegł końca.`, TIMER_REMINDER_TAG);
   renderSession();
 }
@@ -1018,8 +1057,8 @@ async function showAppNotification(title, body, tag) {
   const options = {
     body,
     tag,
-    icon: "assets/icon.svg",
-    badge: "assets/icon.svg",
+    icon: "assets/lacti-icon-192-v16.png",
+    badge: "assets/lacti-icon-192-v16.png",
     vibrate: [120, 80, 120],
   };
   try {
@@ -1061,23 +1100,58 @@ function primeAudio() {
   }
 }
 
-function playAlert() {
+function playAlert(type = "short") {
   primeAudio();
   if (!audioContext) return;
   const start = audioContext.currentTime;
-  const gain = audioContext.createGain();
-  gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.14, start + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.38);
-  gain.connect(audioContext.destination);
+  const isFinish = type === "finish";
+  const notes = isFinish
+    ? [
+        { frequency: 784, at: 0, duration: 0.22 },
+        { frequency: 988, at: 0.25, duration: 0.22 },
+        { frequency: 1175, at: 0.5, duration: 0.28 },
+        { frequency: 880, at: 0.92, duration: 0.24 },
+        { frequency: 1175, at: 1.18, duration: 0.26 },
+        { frequency: 1319, at: 1.48, duration: 0.48 },
+      ]
+    : [
+        { frequency: 660, at: 0, duration: 0.18 },
+        { frequency: 880, at: 0.14, duration: 0.24 },
+      ];
+  const masterGain = audioContext.createGain();
+  masterGain.gain.setValueAtTime(isFinish ? 0.2 : 0.14, start);
+  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + (isFinish ? 2.1 : 0.46));
+  masterGain.connect(audioContext.destination);
 
-  [660, 880].forEach((frequency, index) => {
+  notes.forEach((note) => {
+    const noteStart = start + note.at;
+    const noteEnd = noteStart + note.duration;
+    const noteGain = audioContext.createGain();
+    noteGain.gain.setValueAtTime(0.0001, noteStart);
+    noteGain.gain.exponentialRampToValueAtTime(1, noteStart + 0.02);
+    noteGain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+    noteGain.connect(masterGain);
+
     const oscillator = audioContext.createOscillator();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(frequency, start + index * 0.12);
-    oscillator.connect(gain);
-    oscillator.start(start + index * 0.12);
-    oscillator.stop(start + 0.42);
+    oscillator.type = isFinish ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(note.frequency, noteStart);
+    oscillator.connect(noteGain);
+    oscillator.start(noteStart);
+    oscillator.stop(noteEnd + 0.02);
+
+    if (isFinish) {
+      const shimmer = audioContext.createOscillator();
+      shimmer.type = "sine";
+      shimmer.frequency.setValueAtTime(note.frequency * 1.5, noteStart);
+      const shimmerGain = audioContext.createGain();
+      shimmerGain.gain.setValueAtTime(0.0001, noteStart);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.24, noteStart + 0.025);
+      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+      shimmer.connect(shimmerGain);
+      shimmerGain.connect(masterGain);
+      shimmer.start(noteStart);
+      shimmer.stop(noteEnd + 0.02);
+    }
   });
 }
 

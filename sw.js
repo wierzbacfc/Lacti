@@ -1,15 +1,14 @@
-const CACHE_NAME = "lacti-v15";
+const CACHE_NAME = "lacti-v18";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=15",
-  "./app.js?v=15",
-  "./manifest.webmanifest",
-  "./assets/icon.svg",
+  "./styles.css?v=18",
+  "./app.js?v=18",
+  "./manifest.webmanifest?v=18",
   "./assets/app-icon-source.png",
-  "./assets/apple-touch-icon.png",
-  "./assets/icon-192.png",
-  "./assets/icon-512.png",
+  "./assets/lacti-apple-touch-icon-v16.png",
+  "./assets/lacti-icon-192-v16.png",
+  "./assets/lacti-icon-512-v16.png",
 ];
 
 self.addEventListener("install", (event) => {

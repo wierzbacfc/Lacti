@@ -5,7 +5,7 @@
   "id": "./",
   "lang": "pl",
   "dir": "ltr",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=18",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone"],
@@ -15,21 +15,15 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "assets/icon-192.png",
+      "src": "assets/lacti-icon-192-v16.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/icon-512.png",
+      "src": "assets/lacti-icon-512-v16.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "assets/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
@@ -38,20 +32,20 @@
     {
       "name": "Plan doby",
       "short_name": "Plan",
-      "url": "./index.html?module=plan",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "./index.html?v=18&module=plan",
+      "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Laktator",
       "short_name": "Timer",
-      "url": "./index.html?module=session",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "./index.html?v=18&module=session",
+      "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Wyniki",
       "short_name": "Wyniki",
-      "url": "./index.html?module=stats",
-      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "url": "./index.html?v=18&module=stats",
+      "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

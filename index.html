@@ -12,10 +12,10 @@
     <meta name="apple-mobile-web-app-title" content="Lacti">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Lacti</title>
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="assets/icon-192.png" type="image/png">
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=15">
+    <link rel="manifest" href="manifest.webmanifest?v=18">
+    <link rel="icon" href="assets/lacti-icon-192-v16.png" type="image/png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/lacti-apple-touch-icon-v16.png">
+    <link rel="stylesheet" href="styles.css?v=18">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -49,6 +49,9 @@
       <symbol id="icon-check" viewBox="0 0 24 24">
         <path d="m5 12 4 4L19 6"/>
       </symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </symbol>
       <symbol id="icon-rotate" viewBox="0 0 24 24">
         <path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/>
       </symbol>
@@ -66,7 +69,7 @@
 
     <div class="app-shell">
       <header class="app-header">
-        <img class="brand-mark" src="assets/icon-192.png" alt="">
+        <img class="brand-mark" src="assets/lacti-icon-192-v16.png" alt="">
         <div class="brand-copy">
           <p id="todayLabel" class="meta-label">Dzisiaj</p>
           <h1>Lacti</h1>
@@ -140,6 +143,10 @@
               <svg><use href="#icon-stop"></use></svg>
               Stop
             </button>
+            <button class="soft-button add-result-button" type="button" data-open-log-modal>
+              <svg><use href="#icon-save"></use></svg>
+              Dodaj wynik
+            </button>
           </div>
 
           <div class="control-group timer-library" aria-labelledby="timerLibraryTitle">
@@ -177,6 +184,11 @@
             </div>
             <div class="next-pill" id="todayTotalPill">0 ml</div>
           </div>
+
+          <button class="primary-button stats-add-button" type="button" data-open-log-modal>
+            <svg><use href="#icon-save"></use></svg>
+            Dodaj wynik
+          </button>
 
           <div class="metrics-grid">
             <div class="metric-card">
@@ -252,26 +264,6 @@
             </div>
           </div>
 
-          <form class="compact-form" id="logForm">
-            <div class="mini-heading">Nowy zapis</div>
-            <label>
-              <span>Data</span>
-              <input id="logDate" type="date" required>
-            </label>
-            <label>
-              <span>Godzina</span>
-              <input id="logTime" type="time" required>
-            </label>
-            <label>
-              <span>Razem ml</span>
-              <input id="logMl" type="number" min="0" step="5" inputmode="numeric" placeholder="0" required>
-            </label>
-            <button class="primary-button" type="submit">
-              <svg><use href="#icon-save"></use></svg>
-              Zapisz
-            </button>
-          </form>
-
           <div class="history-block">
             <div class="mini-heading">Historia</div>
             <div id="historyList" class="history-list"></div>
@@ -295,6 +287,45 @@
       </nav>
     </div>
 
-    <script src="app.js?v=15" type="module"></script>
+    <div class="modal-backdrop is-hidden" id="logModal" aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
+        <div class="modal-heading">
+          <div>
+            <p class="meta-label">Nowy zapis</p>
+            <h2 id="logModalTitle">Dodaj wynik</h2>
+          </div>
+          <button class="icon-button" id="closeLogModalButton" type="button" data-close-log-modal aria-label="Zamknij">
+            <svg><use href="#icon-x"></use></svg>
+          </button>
+        </div>
+
+        <form class="compact-form log-modal-form" id="logForm">
+          <label>
+            <span>Data</span>
+            <input id="logDate" type="date" required>
+          </label>
+          <label>
+            <span>Godzina</span>
+            <input id="logTime" type="time" required>
+          </label>
+          <label>
+            <span>Razem ml</span>
+            <input id="logMl" type="number" min="0" step="5" inputmode="numeric" placeholder="0" required>
+          </label>
+          <div class="modal-actions">
+            <button class="soft-button" type="button" data-close-log-modal>
+              <svg><use href="#icon-x"></use></svg>
+              Anuluj
+            </button>
+            <button class="primary-button" type="submit">
+              <svg><use href="#icon-save"></use></svg>
+              Zapisz
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script src="app.js?v=18" type="module"></script>
   </body>
 </html>
