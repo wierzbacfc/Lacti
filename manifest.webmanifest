@@ -5,7 +5,7 @@
   "id": "./",
   "lang": "pl",
   "dir": "ltr",
-  "start_url": "./index.html?v=18",
+  "start_url": "./index.html?v=21",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone"],
@@ -32,19 +32,25 @@
     {
       "name": "Plan doby",
       "short_name": "Plan",
-      "url": "./index.html?v=18&module=plan",
+      "url": "./index.html?v=21&module=plan",
       "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Laktator",
       "short_name": "Timer",
-      "url": "./index.html?v=18&module=session",
+      "url": "./index.html?v=21&module=session",
       "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Wyniki",
       "short_name": "Wyniki",
-      "url": "./index.html?v=18&module=stats",
+      "url": "./index.html?v=21&module=stats",
+      "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Ustawienia",
+      "short_name": "Ustaw.",
+      "url": "./index.html?v=21&module=settings",
       "icons": [{ "src": "assets/lacti-icon-192-v16.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

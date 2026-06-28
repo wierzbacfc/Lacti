@@ -5,6 +5,78 @@ const QUARTER_DAYS = 90;
 const TIMER_SLOT_COUNT = 2;
 const PLAN_REMINDER_TAG = "mleczny-plan-pobranie";
 const TIMER_REMINDER_TAG = "mleczny-plan-minutnik";
+const DEFAULT_SETTINGS = {
+  theme: "light",
+  timerSound: "lacti",
+  timerVolume: 70,
+  pickupNotificationsEnabled: false,
+  pickupReminderLeadMinutes: 10,
+};
+const SHORT_ALERT_SOUND = {
+  type: "sine",
+  gain: 0.14,
+  end: 0.46,
+  notes: [
+    { frequency: 660, at: 0, duration: 0.18 },
+    { frequency: 880, at: 0.14, duration: 0.24 },
+  ],
+};
+const TIMER_SOUND_OPTIONS = {
+  lacti: {
+    label: "Lacti",
+    type: "triangle",
+    gain: 0.24,
+    end: 2.16,
+    shimmer: true,
+    notes: [
+      { frequency: 784, at: 0, duration: 0.22 },
+      { frequency: 988, at: 0.25, duration: 0.22 },
+      { frequency: 1175, at: 0.5, duration: 0.28 },
+      { frequency: 880, at: 0.92, duration: 0.24 },
+      { frequency: 1175, at: 1.18, duration: 0.26 },
+      { frequency: 1319, at: 1.48, duration: 0.48 },
+    ],
+  },
+  bell: {
+    label: "Dzwonek",
+    type: "sine",
+    gain: 0.22,
+    end: 2.35,
+    shimmer: true,
+    notes: [
+      { frequency: 988, at: 0, duration: 0.42 },
+      { frequency: 1319, at: 0.52, duration: 0.5 },
+      { frequency: 988, at: 1.18, duration: 0.38 },
+      { frequency: 1568, at: 1.62, duration: 0.48 },
+    ],
+  },
+  pulse: {
+    label: "Puls",
+    type: "square",
+    gain: 0.16,
+    end: 2.18,
+    notes: [
+      { frequency: 392, at: 0, duration: 0.16 },
+      { frequency: 392, at: 0.32, duration: 0.16 },
+      { frequency: 523, at: 0.64, duration: 0.18 },
+      { frequency: 523, at: 0.98, duration: 0.18 },
+      { frequency: 659, at: 1.32, duration: 0.22 },
+      { frequency: 784, at: 1.72, duration: 0.34 },
+    ],
+  },
+  soft: {
+    label: "Delikatny",
+    type: "sine",
+    gain: 0.18,
+    end: 1.95,
+    notes: [
+      { frequency: 523, at: 0, duration: 0.36 },
+      { frequency: 659, at: 0.42, duration: 0.38 },
+      { frequency: 784, at: 0.88, duration: 0.42 },
+      { frequency: 1047, at: 1.32, duration: 0.44 },
+    ],
+  },
+};
 
 const defaultState = {
   schedule: [
@@ -29,6 +101,7 @@ const defaultState = {
   lastTimerStartedAt: null,
   completedTimerIds: [],
   statsRange: "week",
+  settings: { ...DEFAULT_SETTINGS },
   logs: [],
 };
 
@@ -40,6 +113,9 @@ let audioContext = null;
 let wakeLock = null;
 let activeTimelineDrag = null;
 let logModalReturnFocus = null;
+let planEditMode = false;
+
+applyTheme(state.settings?.theme);
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
@@ -61,6 +137,7 @@ function cacheDom() {
     nextPickupTime: document.querySelector("#nextPickupTime"),
     nextPickupCountdown: document.querySelector("#nextPickupCountdown"),
     scheduleList: document.querySelector("#scheduleList"),
+    planEditButton: document.querySelector("#planEditButton"),
     addPickupButton: document.querySelector("#addPickupButton"),
     evenPlanButton: document.querySelector("#evenPlanButton"),
     sessionStatePill: document.querySelector("#sessionStatePill"),
@@ -108,6 +185,16 @@ function cacheDom() {
     logTime: document.querySelector("#logTime"),
     logMl: document.querySelector("#logMl"),
     historyList: document.querySelector("#historyList"),
+    settingsThemePill: document.querySelector("#settingsThemePill"),
+    themeButtons: document.querySelectorAll("[data-theme-choice]"),
+    timerSoundSelect: document.querySelector("#timerSoundSelect"),
+    soundVolumeInput: document.querySelector("#soundVolumeInput"),
+    soundVolumeValue: document.querySelector("#soundVolumeValue"),
+    testSoundButton: document.querySelector("#testSoundButton"),
+    notificationsToggle: document.querySelector("#notificationsToggle"),
+    notificationStatusText: document.querySelector("#notificationStatusText"),
+    notificationLeadInput: document.querySelector("#notificationLeadInput"),
+    notificationLeadValue: document.querySelector("#notificationLeadValue"),
   });
 }
 
@@ -117,6 +204,7 @@ function bindEvents() {
   });
 
   dom.notificationButton.addEventListener("click", requestNotifications);
+  dom.planEditButton.addEventListener("click", togglePlanEditMode);
   dom.addPickupButton.addEventListener("click", addPickup);
   dom.evenPlanButton.addEventListener("click", distributeScheduleEvenly);
   dom.openLogModalButtons.forEach((button) => {
@@ -132,6 +220,7 @@ function bindEvents() {
   dom.scheduleList.addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-pickup]");
     if (!removeButton) return;
+    if (!planEditMode) return;
     removePickup(removeButton.dataset.id);
   });
 
@@ -175,6 +264,36 @@ function bindEvents() {
     });
   });
 
+  dom.themeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      updateSettings({ theme: button.dataset.themeChoice });
+    });
+  });
+
+  dom.timerSoundSelect.addEventListener("change", () => {
+    updateSettings({ timerSound: dom.timerSoundSelect.value });
+  });
+
+  dom.soundVolumeInput.addEventListener("input", () => {
+    updateSettings({ timerVolume: dom.soundVolumeInput.value });
+  });
+
+  dom.testSoundButton.addEventListener("click", () => {
+    playAlert("finish");
+  });
+
+  dom.notificationsToggle.addEventListener("change", () => {
+    if (dom.notificationsToggle.checked) {
+      enablePickupNotifications({ showConfirmation: true });
+      return;
+    }
+    updateSettings({ pickupNotificationsEnabled: false });
+  });
+
+  dom.notificationLeadInput.addEventListener("input", () => {
+    updateSettings({ pickupReminderLeadMinutes: dom.notificationLeadInput.value });
+  });
+
   dom.logForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const timestamp = localDateTimeToTimestamp(dom.logDate.value, dom.logTime.value);
@@ -213,6 +332,22 @@ function initializeInputs() {
   setDefaultLogDateTime();
 }
 
+function togglePlanEditMode() {
+  planEditMode = !planEditMode;
+  activeTimelineDrag = null;
+  renderPlan();
+}
+
+function renderPlanControls() {
+  dom.planEditButton.classList.toggle("is-on", planEditMode);
+  dom.planEditButton.setAttribute("aria-pressed", String(planEditMode));
+  dom.planEditButton.innerHTML = planEditMode
+    ? `<svg><use href="#icon-unlock"></use></svg>Zablokuj`
+    : `<svg><use href="#icon-lock"></use></svg>Edytuj plan`;
+  dom.addPickupButton.disabled = !planEditMode;
+  dom.evenPlanButton.disabled = !planEditMode;
+}
+
 function openLogModal() {
   logModalReturnFocus = document.activeElement;
   setDefaultLogDateTime();
@@ -238,11 +373,13 @@ function initializeView() {
 }
 
 function renderAll() {
+  applyTheme(getSettings().theme);
   renderHeader();
   renderNotificationState();
   renderPlan();
   renderSession();
   renderStats();
+  renderSettings();
   scheduleNextPickupReminder();
 }
 
@@ -262,7 +399,7 @@ function setView(name) {
 }
 
 function isKnownView(name) {
-  return ["plan", "session", "stats"].includes(name);
+  return ["plan", "session", "stats", "settings"].includes(name);
 }
 
 function updateModuleParam(name) {
@@ -272,8 +409,10 @@ function updateModuleParam(name) {
 }
 
 function renderPlan() {
+  renderPlanControls();
   const sorted = getSortedSchedule();
   const next = getNextPickup();
+  const isLocked = !planEditMode;
   dom.nextPickupTime.textContent = minutesToTime(next.minutes);
   dom.nextPickupPill.textContent = minutesToTime(next.minutes);
   dom.nextPickupCountdown.textContent = formatDuration(next.delta);
@@ -296,13 +435,16 @@ function renderPlan() {
     .map((item, index) => {
       const isNext = item.id === next.id;
       const percent = timelinePercent(item.minutes);
+      const removeDisabled = isLocked || sorted.length <= 1;
       return `
         <article class="timeline-marker${isNext ? " is-next" : ""}" style="top: ${percent}%">
           <button
-            class="timeline-handle"
+            class="timeline-handle${isLocked ? " is-locked" : ""}"
             data-timeline-handle
             data-id="${item.id}"
             type="button"
+            tabindex="${isLocked ? "-1" : "0"}"
+            aria-disabled="${String(isLocked)}"
             aria-label="Pobranie ${index + 1}, ${minutesToTime(item.minutes)}"
           >
             <span></span>
@@ -312,7 +454,7 @@ function renderPlan() {
               <strong>${minutesToTime(item.minutes)}</strong>
               <span>${isNext ? "następne" : `pobranie ${index + 1}`}</span>
             </div>
-            <button class="icon-button remove-pickup" data-remove-pickup data-id="${item.id}" type="button" aria-label="Usuń pobranie" ${sorted.length <= 1 ? "disabled" : ""}>
+            <button class="icon-button remove-pickup" data-remove-pickup data-id="${item.id}" type="button" aria-label="Usuń pobranie" ${removeDisabled ? "disabled" : ""}>
               <svg><use href="#icon-minus"></use></svg>
             </button>
           </div>
@@ -322,7 +464,11 @@ function renderPlan() {
     .join("");
 
   dom.scheduleList.innerHTML = `
-    <section class="timeline-panel" aria-label="Plan pobrań na całą dobę">
+    <section class="timeline-panel${isLocked ? " is-locked" : " is-editing"}" aria-label="Plan pobrań na całą dobę">
+      <div class="timeline-lock-pill">
+        <svg><use href="#${isLocked ? "icon-lock" : "icon-unlock"}"></use></svg>
+        ${isLocked ? "Zablokowany" : "Edycja"}
+      </div>
       <div class="timeline-track" data-timeline-axis>
         <div class="timeline-rail" aria-hidden="true"></div>
         ${tickHtml}
@@ -367,6 +513,7 @@ function renderTimelineGaps(sorted) {
 function startTimelineDrag(event) {
   const handle = event.target.closest("[data-timeline-handle]");
   if (!handle) return;
+  if (!planEditMode) return;
   const axis = handle.closest("[data-timeline-axis]");
   if (!axis) return;
 
@@ -374,9 +521,10 @@ function startTimelineDrag(event) {
   activeTimelineDrag = {
     id: handle.dataset.id,
     axis,
+    startY: event.clientY,
+    hasMoved: false,
   };
   handle.setPointerCapture?.(event.pointerId);
-  updatePickupFromPointer(event.clientY);
   window.addEventListener("pointermove", moveTimelineDrag);
   window.addEventListener("pointerup", stopTimelineDrag, { once: true });
   window.addEventListener("pointercancel", stopTimelineDrag, { once: true });
@@ -385,6 +533,10 @@ function startTimelineDrag(event) {
 function moveTimelineDrag(event) {
   if (!activeTimelineDrag) return;
   event.preventDefault();
+  if (!activeTimelineDrag.hasMoved) {
+    if (Math.abs(event.clientY - activeTimelineDrag.startY) < 8) return;
+    activeTimelineDrag.hasMoved = true;
+  }
   updatePickupFromPointer(event.clientY);
 }
 
@@ -407,6 +559,7 @@ function updatePickupFromPointer(clientY) {
 function handleTimelineKeydown(event) {
   const handle = event.target.closest("[data-timeline-handle]");
   if (!handle) return;
+  if (!planEditMode) return;
 
   const item = state.schedule.find((entry) => entry.id === handle.dataset.id);
   if (!item) return;
@@ -449,6 +602,7 @@ function updatePickupMinutes(id, minutes, options = {}) {
 }
 
 function addPickup() {
+  if (!planEditMode) return;
   if (state.schedule.length >= 12) return;
   const sorted = getSortedSchedule();
   const lastItem = sorted[sorted.length - 1];
@@ -462,6 +616,7 @@ function addPickup() {
 }
 
 function removePickup(id) {
+  if (!planEditMode) return;
   if (state.schedule.length <= 1) return;
   state.schedule = state.schedule.filter((entry) => entry.id !== id);
   saveState();
@@ -470,6 +625,7 @@ function removePickup(id) {
 }
 
 function distributeScheduleEvenly() {
+  if (!planEditMode) return;
   const sorted = getSortedSchedule();
   const count = sorted.length;
   const first = sorted[0]?.minutes ?? 0;
@@ -1020,6 +1176,67 @@ function renderHistory() {
     .join("");
 }
 
+function renderSettings() {
+  const settings = getSettings();
+  const themeLabel = settings.theme === "dark" ? "Ciemny" : "Jasny";
+  dom.settingsThemePill.textContent = themeLabel;
+  dom.themeButtons.forEach((button) => {
+    const isActive = button.dataset.themeChoice === settings.theme;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+  if (dom.timerSoundSelect.value !== settings.timerSound) {
+    dom.timerSoundSelect.value = settings.timerSound;
+  }
+  if (Number(dom.soundVolumeInput.value) !== settings.timerVolume) {
+    dom.soundVolumeInput.value = settings.timerVolume;
+  }
+  dom.soundVolumeValue.textContent = `${settings.timerVolume}%`;
+  renderNotificationSettings(settings);
+}
+
+function updateSettings(updates) {
+  state.settings = normalizeSettings({ ...getSettings(), ...updates });
+  applyTheme(state.settings.theme);
+  saveState();
+  renderSettings();
+  renderNotificationState();
+  scheduleNextPickupReminder();
+}
+
+function getSettings() {
+  state.settings = normalizeSettings(state.settings);
+  return state.settings;
+}
+
+function normalizeSettings(settings = {}) {
+  const theme = settings.theme === "dark" ? "dark" : "light";
+  const timerSound = TIMER_SOUND_OPTIONS[settings.timerSound] ? settings.timerSound : DEFAULT_SETTINGS.timerSound;
+  const rawVolume = Number(settings.timerVolume);
+  const volume = Number.isFinite(rawVolume) ? rawVolume : DEFAULT_SETTINGS.timerVolume;
+  const rawLead = Number(settings.pickupReminderLeadMinutes);
+  const lead = Number.isFinite(rawLead) ? rawLead : DEFAULT_SETTINGS.pickupReminderLeadMinutes;
+  const hasNotificationSetting = Object.prototype.hasOwnProperty.call(settings, "pickupNotificationsEnabled");
+  return {
+    theme,
+    timerSound,
+    timerVolume: clamp(roundToStep(volume, 5), 0, 100),
+    pickupNotificationsEnabled: hasNotificationSetting
+      ? Boolean(settings.pickupNotificationsEnabled)
+      : isNotificationGranted(),
+    pickupReminderLeadMinutes: clamp(roundToStep(lead, 5), 0, 120),
+  };
+}
+
+function applyTheme(theme) {
+  const safeTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = safeTheme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", safeTheme === "dark" ? "#101819" : "#f5fbfa");
+  document
+    .querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
+    ?.setAttribute("content", safeTheme === "dark" ? "black-translucent" : "default");
+}
+
 function addLog({ amount, timestamp }) {
   state.logs.push({
     id: createId(),
@@ -1030,6 +1247,8 @@ function addLog({ amount, timestamp }) {
 }
 
 function requestNotifications() {
+  enablePickupNotifications({ showConfirmation: true });
+  return;
   primeAudio();
   if (!("Notification" in window)) {
     renderNotificationState();
@@ -1048,8 +1267,65 @@ function requestNotifications() {
 }
 
 function renderNotificationState() {
+  const settings = getSettings();
+  const isActive = settings.pickupNotificationsEnabled && isNotificationGranted();
+  dom.notificationButton.classList.toggle("is-on", isActive);
+  dom.notificationButton.setAttribute("aria-pressed", String(isActive));
+  dom.notificationButton.title = isActive ? "Powiadomienia aktywne" : "Włącz powiadomienia";
+  renderNotificationSettings(settings);
+  return;
   const isGranted = "Notification" in window && Notification.permission === "granted";
   dom.notificationButton.classList.toggle("is-on", isGranted);
+}
+
+function renderNotificationSettings(settings = getSettings()) {
+  if (!dom.notificationsToggle) return;
+  const permission = getNotificationPermission();
+  const isUnsupported = permission === "unsupported";
+  const isDenied = permission === "denied";
+  dom.notificationsToggle.checked = Boolean(settings.pickupNotificationsEnabled);
+  dom.notificationsToggle.disabled = isUnsupported;
+  dom.notificationLeadInput.disabled = isUnsupported;
+  if (Number(dom.notificationLeadInput.value) !== settings.pickupReminderLeadMinutes) {
+    dom.notificationLeadInput.value = settings.pickupReminderLeadMinutes;
+  }
+  dom.notificationLeadValue.textContent = formatReminderLead(settings.pickupReminderLeadMinutes);
+
+  if (isUnsupported) {
+    dom.notificationStatusText.textContent = "Niedostępne w tej przeglądarce";
+  } else if (isDenied) {
+    dom.notificationStatusText.textContent = "Zablokowane w systemie";
+  } else if (settings.pickupNotificationsEnabled && permission === "granted") {
+    dom.notificationStatusText.textContent = `Aktywne: ${formatReminderLead(settings.pickupReminderLeadMinutes)}`;
+  } else if (settings.pickupNotificationsEnabled) {
+    dom.notificationStatusText.textContent = "Wymaga zgody systemowej";
+  } else {
+    dom.notificationStatusText.textContent = "Wyłączone";
+  }
+}
+
+async function enablePickupNotifications({ showConfirmation = false } = {}) {
+  primeAudio();
+  const permission = getNotificationPermission();
+  if (permission === "unsupported" || permission === "denied") {
+    updateSettings({ pickupNotificationsEnabled: false });
+    return;
+  }
+
+  if (permission === "granted") {
+    updateSettings({ pickupNotificationsEnabled: true });
+    if (showConfirmation) {
+      showAppNotification("Powiadomienia aktywne", getPickupReminderConfirmationText(), PLAN_REMINDER_TAG);
+    }
+    return;
+  }
+
+  const result = await Notification.requestPermission();
+  const isGranted = result === "granted";
+  updateSettings({ pickupNotificationsEnabled: isGranted });
+  if (isGranted && showConfirmation) {
+    showAppNotification("Powiadomienia aktywne", getPickupReminderConfirmationText(), PLAN_REMINDER_TAG);
+  }
 }
 
 async function showAppNotification(title, body, tag) {
@@ -1079,6 +1355,18 @@ async function showAppNotification(title, body, tag) {
 
 function scheduleNextPickupReminder() {
   window.clearTimeout(pickupReminderTimer);
+  const settings = getSettings();
+  if (!settings.pickupNotificationsEnabled || !isNotificationGranted()) return;
+  const reminder = getNextPickupReminder(settings.pickupReminderLeadMinutes);
+  if (!reminder) return;
+  const nextDelay = Math.max(1000, reminder.reminderTimestamp - Date.now());
+  if (nextDelay > 2_147_000_000) return;
+  pickupReminderTimer = window.setTimeout(() => {
+    playAlert();
+    showAppNotification(getPickupReminderTitle(reminder.leadMinutes), getPickupReminderBody(reminder), PLAN_REMINDER_TAG);
+    window.setTimeout(scheduleNextPickupReminder, 1000);
+  }, nextDelay);
+  return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   const next = getNextPickup();
   const delay = Math.max(1000, next.delta * 60 * 1000);
@@ -1088,6 +1376,57 @@ function scheduleNextPickupReminder() {
     showAppNotification("Czas pobrania", `Zaplanowane na ${minutesToTime(next.minutes)}.`, PLAN_REMINDER_TAG);
     window.setTimeout(scheduleNextPickupReminder, 70_000);
   }, delay);
+}
+
+function getNextPickupReminder(leadMinutes) {
+  const sorted = getSortedSchedule();
+  if (!sorted.length) return null;
+  const now = Date.now();
+  const today = startOfToday();
+  const leadMs = clamp(leadMinutes, 0, 120) * 60 * 1000;
+
+  for (let dayOffset = 0; dayOffset <= 2; dayOffset += 1) {
+    for (const item of sorted) {
+      const pickupDate = new Date(today);
+      pickupDate.setDate(today.getDate() + dayOffset);
+      pickupDate.setHours(Math.floor(item.minutes / 60), item.minutes % 60, 0, 0);
+      const pickupTimestamp = pickupDate.getTime();
+      const reminderTimestamp = pickupTimestamp - leadMs;
+      if (reminderTimestamp > now + 500) {
+        return {
+          minutes: item.minutes,
+          leadMinutes,
+          pickupTimestamp,
+          reminderTimestamp,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function getPickupReminderTitle(leadMinutes) {
+  return leadMinutes > 0 ? `Pobranie za ${formatDuration(leadMinutes)}` : "Czas pobrania";
+}
+
+function getPickupReminderBody(reminder) {
+  const date = new Date(reminder.pickupTimestamp);
+  const dayLabel = isSameDay(date, new Date()) ? "dzisiaj" : "jutro";
+  return `Zaplanowane ${dayLabel} o ${minutesToTime(reminder.minutes)}.`;
+}
+
+function getPickupReminderConfirmationText() {
+  const settings = getSettings();
+  return `Przypomnienia ${formatReminderLead(settings.pickupReminderLeadMinutes)}.`;
+}
+
+function getNotificationPermission() {
+  if (!("Notification" in window)) return "unsupported";
+  return Notification.permission;
+}
+
+function isNotificationGranted() {
+  return getNotificationPermission() === "granted";
 }
 
 function primeAudio() {
@@ -1105,25 +1444,16 @@ function playAlert(type = "short") {
   if (!audioContext) return;
   const start = audioContext.currentTime;
   const isFinish = type === "finish";
-  const notes = isFinish
-    ? [
-        { frequency: 784, at: 0, duration: 0.22 },
-        { frequency: 988, at: 0.25, duration: 0.22 },
-        { frequency: 1175, at: 0.5, duration: 0.28 },
-        { frequency: 880, at: 0.92, duration: 0.24 },
-        { frequency: 1175, at: 1.18, duration: 0.26 },
-        { frequency: 1319, at: 1.48, duration: 0.48 },
-      ]
-    : [
-        { frequency: 660, at: 0, duration: 0.18 },
-        { frequency: 880, at: 0.14, duration: 0.24 },
-      ];
+  const settings = getSettings();
+  const volume = clamp(settings.timerVolume, 0, 100) / 100;
+  if (volume <= 0) return;
+  const sound = isFinish ? TIMER_SOUND_OPTIONS[settings.timerSound] || TIMER_SOUND_OPTIONS.lacti : SHORT_ALERT_SOUND;
   const masterGain = audioContext.createGain();
-  masterGain.gain.setValueAtTime(isFinish ? 0.2 : 0.14, start);
-  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + (isFinish ? 2.1 : 0.46));
+  masterGain.gain.setValueAtTime((sound.gain || 0.18) * volume, start);
+  masterGain.gain.exponentialRampToValueAtTime(0.0001, start + (sound.end || 0.5));
   masterGain.connect(audioContext.destination);
 
-  notes.forEach((note) => {
+  sound.notes.forEach((note) => {
     const noteStart = start + note.at;
     const noteEnd = noteStart + note.duration;
     const noteGain = audioContext.createGain();
@@ -1133,13 +1463,13 @@ function playAlert(type = "short") {
     noteGain.connect(masterGain);
 
     const oscillator = audioContext.createOscillator();
-    oscillator.type = isFinish ? "triangle" : "sine";
+    oscillator.type = note.type || sound.type || "sine";
     oscillator.frequency.setValueAtTime(note.frequency, noteStart);
     oscillator.connect(noteGain);
     oscillator.start(noteStart);
     oscillator.stop(noteEnd + 0.02);
 
-    if (isFinish) {
+    if (sound.shimmer) {
       const shimmer = audioContext.createOscillator();
       shimmer.type = "sine";
       shimmer.frequency.setValueAtTime(note.frequency * 1.5, noteStart);
@@ -1218,6 +1548,11 @@ function formatDuration(minutes) {
   if (hours && mins) return `${hours} h ${mins} min`;
   if (hours) return `${hours} h`;
   return `${mins} min`;
+}
+
+function formatReminderLead(minutes) {
+  if (minutes <= 0) return "w czasie pobrania";
+  return `${formatDuration(minutes)} przed`;
 }
 
 function secondsToClock(seconds) {
@@ -1357,6 +1692,10 @@ function formatLogDateTime(timestamp) {
   return `${formatHistoryDate(date)}, ${formatHistoryTime(date)}`;
 }
 
+function isSameDay(firstDate, secondDate) {
+  return getDayKey(firstDate.getTime()) === getDayKey(secondDate.getTime());
+}
+
 function formatSignedMl(amount) {
   if (amount > 0) return `+${amount} ml`;
   return `${amount} ml`;
@@ -1406,6 +1745,7 @@ function loadState() {
       lastTimerStartedAt: parsed.lastTimerStartedAt || null,
       completedTimerIds: normalizeCompletedTimerIds(parsed.completedTimerIds, timers),
       statsRange: parsed.statsRange === "quarter" ? "quarter" : "week",
+      settings: normalizeSettings(parsed.settings),
       logs: Array.isArray(parsed.logs) ? parsed.logs : [],
     };
   } catch {

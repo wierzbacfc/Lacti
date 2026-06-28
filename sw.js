@@ -1,10 +1,10 @@
-const CACHE_NAME = "lacti-v18";
+const CACHE_NAME = "lacti-v21";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=18",
-  "./app.js?v=18",
-  "./manifest.webmanifest?v=18",
+  "./styles.css?v=21",
+  "./app.js?v=21",
+  "./manifest.webmanifest?v=21",
   "./assets/app-icon-source.png",
   "./assets/lacti-apple-touch-icon-v16.png",
   "./assets/lacti-icon-192-v16.png",

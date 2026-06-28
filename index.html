@@ -12,10 +12,21 @@
     <meta name="apple-mobile-web-app-title" content="Lacti">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Lacti</title>
-    <link rel="manifest" href="manifest.webmanifest?v=18">
+    <link rel="manifest" href="manifest.webmanifest?v=21">
     <link rel="icon" href="assets/lacti-icon-192-v16.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/lacti-apple-touch-icon-v16.png">
-    <link rel="stylesheet" href="styles.css?v=18">
+    <script>
+      (() => {
+        try {
+          const raw = localStorage.getItem("mleczny-plan-state-v1");
+          const theme = JSON.parse(raw || "{}")?.settings?.theme === "dark" ? "dark" : "light";
+          document.documentElement.dataset.theme = theme;
+        } catch {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="styles.css?v=21">
   </head>
   <body>
     <svg aria-hidden="true" class="icon-sprite">
@@ -52,6 +63,14 @@
       <symbol id="icon-x" viewBox="0 0 24 24">
         <path d="M18 6 6 18M6 6l12 12"/>
       </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+      </symbol>
+      <symbol id="icon-unlock" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" rx="2"/>
+        <path d="M8 11V8a4 4 0 0 1 7.5-2"/>
+      </symbol>
       <symbol id="icon-rotate" viewBox="0 0 24 24">
         <path d="M3 12a9 9 0 1 0 3-6.7M3 4v6h6"/>
       </symbol>
@@ -64,6 +83,20 @@
       </symbol>
       <symbol id="icon-balance" viewBox="0 0 24 24">
         <path d="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4"/>
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.61.82 1 1.55 1H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/>
+      </symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M21 14.2A7.8 7.8 0 0 1 9.8 3 8.5 8.5 0 1 0 21 14.2Z"/>
+      </symbol>
+      <symbol id="icon-volume" viewBox="0 0 24 24">
+        <path d="M11 5 6 9H3v6h3l5 4V5ZM16 9.5a4 4 0 0 1 0 5M19 7a8 8 0 0 1 0 10"/>
       </symbol>
     </svg>
 
@@ -101,6 +134,10 @@
           </div>
 
           <div class="toolbar">
+            <button class="soft-button plan-edit-button" id="planEditButton" type="button" aria-pressed="false">
+              <svg><use href="#icon-lock"></use></svg>
+              Edytuj plan
+            </button>
             <button class="soft-button" id="addPickupButton" type="button">
               <svg><use href="#icon-plus"></use></svg>
               Dodaj
@@ -269,6 +306,89 @@
             <div id="historyList" class="history-list"></div>
           </div>
         </section>
+
+        <section id="view-settings" class="view" aria-labelledby="settingsTitle">
+          <div class="section-heading">
+            <div>
+              <p class="meta-label">Preferencje</p>
+              <h2 id="settingsTitle">Ustawienia</h2>
+            </div>
+            <div class="next-pill" id="settingsThemePill">Jasny</div>
+          </div>
+
+          <div class="settings-panel">
+            <section class="settings-card" aria-labelledby="themeSettingsTitle">
+              <div class="settings-card-heading">
+                <div>
+                  <div class="mini-heading" id="themeSettingsTitle">Motyw</div>
+                  <p class="settings-caption">Wygląd aplikacji</p>
+                </div>
+              </div>
+              <div class="theme-choice-grid" role="group" aria-label="Motyw aplikacji">
+                <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="true">
+                  <svg><use href="#icon-sun"></use></svg>
+                  <span>Jasny</span>
+                </button>
+                <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="false">
+                  <svg><use href="#icon-moon"></use></svg>
+                  <span>Ciemny</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="settings-card" aria-labelledby="notificationSettingsTitle">
+              <div class="settings-card-heading">
+                <div>
+                  <div class="mini-heading" id="notificationSettingsTitle">Powiadomienia</div>
+                  <p class="settings-caption">Przed pobraniem</p>
+                </div>
+              </div>
+
+              <label class="settings-toggle">
+                <input id="notificationsToggle" type="checkbox">
+                <span>
+                  <strong>Przypomnienia pobrań</strong>
+                  <small id="notificationStatusText">Wyłączone</small>
+                </span>
+              </label>
+
+              <label class="setting-slider">
+                <span>Ile wcześniej</span>
+                <strong id="notificationLeadValue">10 min</strong>
+                <input id="notificationLeadInput" type="range" min="0" max="120" step="5" value="10">
+              </label>
+            </section>
+
+            <section class="settings-card" aria-labelledby="soundSettingsTitle">
+              <div class="settings-card-heading">
+                <div>
+                  <div class="mini-heading" id="soundSettingsTitle">Minutnik</div>
+                  <p class="settings-caption">Dźwięk końca</p>
+                </div>
+                <button class="soft-button test-sound-button" id="testSoundButton" type="button">
+                  <svg><use href="#icon-volume"></use></svg>
+                  Test
+                </button>
+              </div>
+
+              <label class="settings-field">
+                <span>Dźwięk</span>
+                <select id="timerSoundSelect" class="settings-select">
+                  <option value="lacti">Lacti</option>
+                  <option value="bell">Dzwonek</option>
+                  <option value="pulse">Puls</option>
+                  <option value="soft">Delikatny</option>
+                </select>
+              </label>
+
+              <label class="setting-slider">
+                <span>Głośność</span>
+                <strong id="soundVolumeValue">70%</strong>
+                <input id="soundVolumeInput" type="range" min="0" max="100" step="5" value="70">
+              </label>
+            </section>
+          </div>
+        </section>
       </main>
 
       <nav class="tabbar" aria-label="Główne moduły">
@@ -283,6 +403,10 @@
         <button class="tab-button" type="button" data-view="stats">
           <svg><use href="#icon-chart"></use></svg>
           <span>Wyniki</span>
+        </button>
+        <button class="tab-button" type="button" data-view="settings">
+          <svg><use href="#icon-settings"></use></svg>
+          <span>Ustaw.</span>
         </button>
       </nav>
     </div>
@@ -326,6 +450,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=18" type="module"></script>
+    <script src="app.js?v=21" type="module"></script>
   </body>
 </html>
